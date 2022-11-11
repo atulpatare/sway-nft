@@ -5,7 +5,7 @@ mod success {
     use super::*;
 
     #[tokio::test]
-    async fn intialize_contract_name_symbol() {
+    async fn should_intialize_contract_name_symbol() {
         let (instance, _id) = setup::get_contract_instance().await;
         let n = string_to_ascii(String::from("Eth"));
         let s = string_to_ascii(String::from("ETH"));
@@ -15,7 +15,7 @@ mod success {
     }
 
     #[tokio::test]
-    async fn read_contract_name_symbol() {        
+    async fn should_read_contract_name_symbol() {        
         let (instance, _id) = setup::get_contract_instance().await;
         let n = string_to_ascii(String::from("Eth"));
         let s = string_to_ascii(String::from("ETH"));

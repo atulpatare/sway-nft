@@ -11,6 +11,8 @@ storage {
     name: str[3] = "Gas",
     // token symbol
     symbol: str[3] = "GAS",
+    // total supply
+    total_supply: u64 = 0,
     // owners for token id
     // owners: StorageMap<u64, Option<Identity>> = StorageMap {},
     // balances of the owner
@@ -36,6 +38,11 @@ impl NFT for Contract {
     #[storage(read)]
     fn symbol() -> str[3] {
         storage.symbol
+    }
+
+    #[storage(read)]
+    fn total_supply() -> u64 {
+        storage.total_supply
     }
 
     #[storage(read)]
