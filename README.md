@@ -21,4 +21,7 @@ forc build
 - Tests
 ```
 cargo test
+
+# to include prints
+cargo test -- --nocapture
 ```

@@ -9,4 +9,7 @@ abi NFT {
 
     #[storage(read)]
     fn symbol() -> str[3];
+
+    #[storage(read)]
+    fn balance_of(owner: Identity) -> u64;
 }
