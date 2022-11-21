@@ -97,6 +97,6 @@ impl NFT for Contract {
             from,
             to,
             token_id,
-        };
+        }
     }
 }
