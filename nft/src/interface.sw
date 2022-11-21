@@ -28,11 +28,11 @@ abi NFT {
     fn max_supply() -> u64;
 
     #[storage(read, write)]
-    fn mint(amount: u64, to: Identity);
+    fn mint(amount: u64, to: Identity) -> MintEvent;
 
     #[storage(read)]
     fn total_supply() -> u64;
 
     #[storage(read, write)]
-    fn transfer_from(from: Identity, to: Identity, token_id: u64);
+    fn transfer_from(from: Identity, to: Identity, token_id: u64) -> TransferEvent;
 }

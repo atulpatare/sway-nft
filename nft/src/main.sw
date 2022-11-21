@@ -53,7 +53,7 @@ impl NFT for Contract {
     }
 
     #[storage(read, write)]
-    fn mint(amount: u64, to: Identity) {
+    fn mint(amount: u64, to: Identity) -> MintEvent {
         let tokens_minted = storage.tokens_minted;
         let total_mint = tokens_minted + amount;
         require(storage.max_supply >= total_mint, InputError::NotEnoughTokensToMint);
@@ -71,11 +71,11 @@ impl NFT for Contract {
         storage.tokens_minted = total_mint;
         storage.total_supply += amount;
 
-        log(MintEvent {
+        MintEvent {
             owner: to,
             token_id_start: tokens_minted,
             total_tokens: amount,
-        });
+        }
     }
 
     #[storage(read)]
@@ -84,7 +84,7 @@ impl NFT for Contract {
     }
 
     #[storage(read, write)]
-    fn transfer_from(from: Identity, to: Identity, token_id: u64) {
+    fn transfer_from(from: Identity, to: Identity, token_id: u64) -> TransferEvent {
         let token_owner = storage.owners.get(token_id);
         require(token_owner.is_some(), InputError::TokenDoesNotExist);
         let token_owner = token_owner.unwrap();
@@ -93,10 +93,10 @@ impl NFT for Contract {
         storage.balances.insert(from, storage.balances.get(from) - 1);
         storage.balances.insert(to, storage.balances.get(to) + 1);
 
-        log(TransferEvent {
+        TransferEvent {
             from,
             to,
             token_id,
-        });
+        };
     }
 }
