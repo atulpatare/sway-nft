@@ -1,34 +1,24 @@
-## NFT 
-An NFT contract on Fuel with sway.
+# NFT 
+NFT contract built on fuel as per ERC721 standard
 
-### Following the erc721 standard
-- [ERC721](https://ethereum.org/en/developers/docs/standards/tokens/erc-721/) 
-- [EIP721](https://eips.ethereum.org/EIPS/eip-721)
-
-### Build and test
-- Make sure to use foll versions
+## Directory Structure
 ```
-forc 0.30.1
-cargo 1.64.0
-rustc 1.64.0
+/interactions : dir contains script to execute functions on contract
+/nft : dir containing contracts in sway
 ```
 
-- Install fuel toolchain
-```
-curl --proto '=https' --tlsv1.2 -sSf \
-    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
-fuelup toolchain install latest
-```
-
+## Execution
 - Build the contracts
 ```
+cd nft # root dir for contracts 
 forc build
 ```
 
-- Tests
+- Run the scripts
 ```
-cargo test
+# run the local fuel node
+fuel-core run --db-type in-memory
 
-# to include prints
-cargo test -- --nocapture
+# run the scripts
+cargo run -p interactions
 ```
