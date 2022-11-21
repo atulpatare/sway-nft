@@ -1,71 +1,49 @@
-#[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
 extern crate rand;
 
-use std::path::Path;
-use std::str::FromStr;
 use std::env;
-use dotenv::dotenv;
+use std::str::FromStr;
 
-use fuel_tx::Address;
-use fuels::prelude::{
-    Bech32ContractId, Contract, Provider, TxParameters, WalletUnlocked,
-};
+use fuel_tx::{Address};
+use fuels::prelude::{Bech32ContractId, Contract, launch_custom_provider_and_get_wallets, Provider, TxParameters, WalletsConfig, WalletUnlocked};
 use fuels::signers::fuel_crypto::SecretKey;
 use fuels_abigen_macro::abigen;
 use fuels_core::Identity;
+use fuels_core::Identity::ContractId;
 use fuels_core::parameters::StorageConfiguration;
-use fuels_types::*;
-use fuels_types::bech32::Bech32Address;
-use rand::Rng;
-use serde_json::de::Read;
-
-// 0.6.5
-
-pub fn tx_params() -> TxParameters {
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
-    let byte_price = 0;
-    TxParameters::new(Some(gas_price), Some(gas_limit), Some(byte_price))
-}
+use dotenv::dotenv;
 
 abigen!(
     NFT,
     "../nft/out/debug/nft-abi.json"
 );
 
-async fn get_contract_id(wallet: &WalletUnlocked) -> Bech32ContractId {
-    debug!("Creating new deployment for non-existent contract");
+async fn setup_provider_and_wallet() -> (WalletUnlocked, Bech32ContractId) {
+    let mut wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(
+            Some(1),             /* Single wallet */
+            Some(1),             /* Single coin (UTXO) */
+            Some(1_000_000_000), /* Amount per coin */
+        ),
+        None,
+        None,
+    )
+        .await;
+    let wallet = wallets.pop().unwrap();
 
-    let _compiled =
-        Contract::load_contract("../nft/out/debug/nft.bin", &None).unwrap();
-
-    let bin_path = "../nft/out/debug/nft.bin".to_string();
-    let contract_id = Contract::deploy(
-        &bin_path,
-        wallet,
-        tx_params(),
-        StorageConfiguration::default(),
+    let id = Contract::deploy(
+        "../nft/out/debug/nft.bin",
+        &wallet,
+        TxParameters::default(),
+        StorageConfiguration::with_storage_path(Some(
+            "../nft/out/debug/nft-storage_slots.json".to_string(),
+        )),
     )
         .await
         .unwrap();
 
-    contract_id
-}
-
-async fn setup_provider_and_wallet(port: u16) -> (Provider, WalletUnlocked) {
-    // let manifest_dir = env!("CARGO_MANIFEST_DIR");
-
-    let address = format!("127.0.0.1:{}", port);
-    let provider = Provider::connect(&address).await.unwrap();
-
-    let primary_private_key = env::var("PRIVATE_KEY").unwrap();
-    let secret = SecretKey::from_str(&primary_private_key, ).unwrap();
-    let wallet =
-        WalletUnlocked::new_from_private_key(secret, Some(provider.clone()));
-
-    (provider, wallet)
+    (wallet.clone(), id)
 }
 
 #[tokio::main]
@@ -73,20 +51,20 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     pretty_env_logger::init();
 
-    let (provider, wallet) = setup_provider_and_wallet(4000).await;
-    let contract_id: Bech32ContractId = get_contract_id(&wallet).await;
-    info!("Using contract at {}", contract_id.to_string());
-    let contract: NFT = NFT::new(contract_id, wallet);
+    let (wallet, contract_id) = setup_provider_and_wallet().await;
+    println!("Using contract at {}", contract_id.to_string());
 
-    let secondary_private_key = env::var("PRIVATE_KEY_SECONDARY").unwrap();
-    let user = WalletUnlocked::new_from_private_key(
-        SecretKey::from_str(&secondary_private_key).unwrap(),
-        Some(provider)
-    );
-    let raw_address: Bech32Address = user.address().clone();
-    let receiver_identity = Identity::Address(Address::from(raw_address));
+    let contract = NFT::new(contract_id.clone(), wallet.clone());
+    let receiver = Identity::Address(Address::from(wallet.address()));
 
-    let _ = contract.methods().mint(1, receiver_identity).call().await;
+    let _ = contract.methods().mint(2, receiver.clone()).call().await;
+    let total_supply = contract.methods().total_supply().call().await;
+    let max_supply = contract.methods().max_supply().call().await;
+    let balance = contract.methods().balance_of(receiver.clone()).call().await;
+
+    println!("Total supply for the contract: {}", total_supply.unwrap().value);
+    println!("Max supply for the contract: {}", max_supply.unwrap().value);
+    println!("Balance of the receiver is: {}", balance.unwrap().value);
 
     Ok(())
 }
