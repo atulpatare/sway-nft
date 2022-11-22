@@ -10,8 +10,7 @@ pub struct TransferEvent {
 
 pub struct MintEvent {
     owner: Identity,
-    token_id_start: u64,
-    total_tokens: u64,
+    token_id: u64,
 }
 
 abi NFT {
@@ -28,7 +27,7 @@ abi NFT {
     fn max_supply() -> u64;
 
     #[storage(read, write)]
-    fn mint(amount: u64, to: Identity);
+    fn mint(to: Identity);
 
     #[storage(read)]
     fn total_supply() -> u64;

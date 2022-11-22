@@ -21,7 +21,6 @@ storage {
     balances: StorageMap<Identity, u64> = StorageMap {},
     max_supply: u64 = 0,
     owners: StorageMap<u64, Option<Identity>> = StorageMap {},
-    tokens_minted: u64 = 0,
     total_supply: u64 = 0,
 }
 
@@ -53,28 +52,21 @@ impl NFT for Contract {
     }
 
     #[storage(read, write)]
-    fn mint(amount: u64, to: Identity) {
-        let tokens_minted = storage.tokens_minted;
-        let total_mint = tokens_minted + amount;
-        require(storage.max_supply >= total_mint, InputError::NotEnoughTokensToMint);
+    fn mint(to: Identity) {
+        let total_supply = storage.total_supply;
+        let token_id = total_supply + 1;
+        require(storage.max_supply >= token_id, InputError::NotEnoughTokensToMint);
 
         let admin = storage.admin;
         require(!storage.access_control || (admin.is_some() && msg_sender().unwrap() == admin.unwrap()), AccessError::SenderNotAdmin);
 
-        let mut index = tokens_minted;
-        while index < total_mint {
-            storage.owners.insert(index, Option::Some(to));
-            index += 1;
-        }
-
-        storage.balances.insert(to, storage.balances.get(to) + amount);
-        storage.tokens_minted = total_mint;
-        storage.total_supply += amount;
+        storage.owners.insert(token_id, Option::Some(to));
+        storage.balances.insert(to, storage.balances.get(to) + 1);
+        storage.total_supply += 1;
 
         log(MintEvent {
             owner: to,
-            token_id_start: tokens_minted,
-            total_tokens: amount,
+            token_id,
         });
     }
 
