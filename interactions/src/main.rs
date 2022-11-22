@@ -5,15 +5,13 @@ extern crate rand;
 use std::env;
 use std::str::FromStr;
 
-use fuel_tx::{Address, ContractId};
-use fuels::prelude::{
-    Bech32ContractId, Contract, Provider, TxParameters, WalletUnlocked,
-};
+use dotenv::dotenv;
+use fuel_tx::Address;
+use fuels::prelude::{Bech32ContractId, Contract, ContractId, Provider, TxParameters, WalletUnlocked};
 use fuels::signers::fuel_crypto::SecretKey;
 use fuels_abigen_macro::abigen;
 use fuels_core::Identity;
 use fuels_core::parameters::StorageConfiguration;
-use dotenv::dotenv;
 
 abigen!(
     NFT,
@@ -21,6 +19,11 @@ abigen!(
 );
 
 async fn get_contract_id(wallet: &WalletUnlocked) -> Bech32ContractId {
+    let contract_address = env::var("CONTRACT_ADDRESS");
+    if !contract_address.is_err() {
+        println!("Using contract address from .env");
+        return Bech32ContractId::from(ContractId::from_str(&*contract_address.unwrap()).unwrap());
+    }
     let bin_path = "../nft/out/debug/nft.bin".to_string();
     let contract_id = Contract::deploy(
         &bin_path,
@@ -37,9 +40,11 @@ async fn get_contract_id(wallet: &WalletUnlocked) -> Bech32ContractId {
 }
 
 async fn setup_provider_and_wallet() -> (Provider, WalletUnlocked) {
-    // let manifest_dir = env!("CARGO_MANIFEST_DIR");
-
-    let address = "127.0.0.1:4000";
+    let address = match env::var("NODE_URL") {
+        Ok(val) => val,
+        Err(_) => "127.0.0.1:4000".to_string(),
+    };
+    println!("Connected to node on url : {}", address);
     let provider = Provider::connect(&address).await.unwrap();
 
     let primary_private_key = env::var("PRIVATE_KEY").unwrap();
@@ -58,28 +63,29 @@ async fn main() -> std::io::Result<()> {
     let (provider, wallet) = setup_provider_and_wallet().await;
     let contract_id: Bech32ContractId = get_contract_id(&wallet).await;
     let contract: NFT = NFT::new(contract_id.clone(), wallet.clone());
-    println!("Using contract at {}", contract_id.to_string());
 
     let random_wallet = WalletUnlocked::new_random(Some(provider));
     let receiver = Identity::Address(Address::from(random_wallet.address()));
     let owner = Identity::Address(Address::from(wallet.address()));
-    println!("Address of the owner: {}", wallet.address().to_string());
-    println!("Address of the receiver: {}", random_wallet.address().to_string());
 
-    let _ = contract.methods().constructor().call().await;
-    let _ = contract.methods().mint(10, receiver.clone()).call().await;
+    println!("Contract address: 0x{}", contract_id.hash);
+    println!("Address of the owner: 0x{}", wallet.address().hash);
+    println!("Address of the receiver: 0x{}", random_wallet.address().hash);
 
-    let balance = contract.methods().balance_of(receiver.clone()).call().await;
-    let owner_balance = contract.methods().balance_of(owner.clone()).call().await;
-    println!("Balance of the receiver is: {}", balance.unwrap().value);
-    println!("Balance of the owner is : {}", owner_balance.unwrap().value);
+    let mut tx_params = TxParameters::default();
+    tx_params.gas_price = 1;
 
-    let _ = contract.methods().transfer_from(receiver.clone(), owner.clone(), 1).call().await;
-    let updated_balance = contract.methods().balance_of(receiver.clone()).call().await;
-    let owner_updated_balance = contract.methods().balance_of(owner.clone()).call().await;
+    let contract_methods = contract.methods();
 
-    println!("Balance of the receiver after transfer is: {}", updated_balance.unwrap().value);
-    println!("Balance of the owner is now : {}", owner_updated_balance.unwrap().value);
+    let constructor_result = contract_methods.constructor().tx_params(tx_params).call().await;
+    constructor_result.as_ref().unwrap();
+    assert_eq!(constructor_result.is_err(), false, "Constructor failed");
+
+    let mint_result = contract_methods.mint(receiver.clone()).tx_params(tx_params).call().await;
+    assert_eq!(mint_result.is_err(), false, "Mint function call failed");
+
+    let transfer_result = contract_methods.transfer_from(receiver.clone(), owner.clone(), 1).tx_params(tx_params).call().await;
+    assert_eq!(transfer_result.is_err(), false, "Token transfer failed");
 
     Ok(())
 }
