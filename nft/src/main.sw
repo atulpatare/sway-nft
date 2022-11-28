@@ -43,7 +43,7 @@ impl NFT for Contract {
         require(storage.max_supply == 0, InitError::CannotReinitialize);
         storage.access_control = true;
         storage.admin = admin;
-        storage.max_supply = 10000;
+        storage.max_supply = 1000;
     }
 
     #[storage(read)]

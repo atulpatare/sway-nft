@@ -87,5 +87,10 @@ async fn main() -> std::io::Result<()> {
     let transfer_result = contract_methods.transfer_from(receiver.clone(), owner.clone(), 1).tx_params(tx_params).call().await;
     assert_eq!(transfer_result.is_err(), false, "Token transfer failed");
 
+    let receiver_balance = contract_methods.balance_of(receiver.clone()).tx_params(tx_params).call().await;
+    let owner_balance = contract_methods.balance_of(owner.clone()).tx_params(tx_params).call().await;
+    println!("Balance of the receiver {}", receiver_balance.unwrap().value);
+    println!("Balance of the owner    {}", owner_balance.unwrap().value);
+
     Ok(())
 }
